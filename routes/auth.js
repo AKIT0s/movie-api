@@ -13,15 +13,15 @@ router.post('/register', async (req, res) => {
 
   try {
     // 중복 ID 확인
-    const [existing] = await db.query('SELECT id FROM member WHERE id = ?', [id]);
-    if (existing.length > 0) {
+    const existing = await db.query('SELECT id FROM member WHERE id = $1', [id]);
+    if (existing.rows.length > 0) {
       return res.status(409).json({ error: '이미 존재하는 ID입니다.' });
     }
 
     // 중복 이메일 확인
     if (email) {
-      const [existingEmail] = await db.query('SELECT email FROM member WHERE email = ?', [email]);
-      if (existingEmail.length > 0) {
+      const existingEmail = await db.query('SELECT email FROM member WHERE email = $1', [email]);
+      if (existingEmail.rows.length > 0) {
         return res.status(409).json({ error: '이미 존재하는 이메일입니다.' });
       }
     }
@@ -30,7 +30,7 @@ router.post('/register', async (req, res) => {
 
     await db.query(
       `INSERT INTO member (id, password, name, birth, gender, email, phone_number)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [id, hashedPw, name, birth || null, gender || null, email || null, phone_number]
     );
 
@@ -41,8 +41,8 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// routes/auth.js //로그인
 
+// 로그인
 router.post('/login', async (req, res) => {
   const { id, password } = req.body;
 
@@ -52,7 +52,8 @@ router.post('/login', async (req, res) => {
 
   try {
     // 1. 해당 ID로 유저 조회
-    const [users] = await db.query('SELECT * FROM member WHERE id = ?', [id]);
+    const result = await db.query('SELECT * FROM member WHERE id = $1', [id]);
+    const users = result.rows;
 
     if (users.length === 0) {
       return res.status(401).json({ error: 'ID 또는 비밀번호가 일치하지 않습니다.' });
@@ -73,6 +74,5 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ error: '서버 오류' });
   }
 });
-
 
 module.exports = router;
