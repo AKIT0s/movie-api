@@ -44,35 +44,49 @@ router.post('/register', async (req, res) => {
 
 // 로그인
 router.post('/login', async (req, res) => {
+  console.time("🔁 전체 로그인 처리");
+
   const { id, password } = req.body;
 
   if (!id || !password) {
+    console.timeEnd("🔁 전체 로그인 처리");
     return res.status(400).json({ error: 'ID와 비밀번호를 모두 입력해주세요.' });
   }
 
   try {
     // 1. 해당 ID로 유저 조회
+    console.time("📦 DB 쿼리");
     const result = await db.query('SELECT * FROM member WHERE id = $1', [id]);
+    console.timeEnd("📦 DB 쿼리");
+
     const users = result.rows;
 
     if (users.length === 0) {
+      console.timeEnd("🔁 전체 로그인 처리");
       return res.status(401).json({ error: 'ID 또는 비밀번호가 일치하지 않습니다.' });
     }
 
     const user = users[0];
 
     // 2. 비밀번호 비교
+    console.time("🔐 비밀번호 비교");
     const isMatch = await bcrypt.compare(password, user.password);
+    console.timeEnd("🔐 비밀번호 비교");
+
     if (!isMatch) {
+      console.timeEnd("🔁 전체 로그인 처리");
       return res.status(401).json({ error: 'ID 또는 비밀번호가 일치하지 않습니다.' });
     }
 
     // 3. 로그인 성공
+    console.timeEnd("🔁 전체 로그인 처리");
     res.status(200).json({ message: '로그인 성공!' });
   } catch (err) {
+    console.timeEnd("🔁 전체 로그인 처리");
     console.error('❌ 로그인 오류:', err);
     res.status(500).json({ error: '서버 오류' });
   }
 });
+
 
 module.exports = router;
