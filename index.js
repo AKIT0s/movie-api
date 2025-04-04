@@ -12,8 +12,8 @@ app.use(express.json());
 // 테스트 라우트 유지하고 싶으면 아래 포함!
 app.get('/test-db', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT 1 + 1 AS result');
-    res.json({ message: 'DB 연결 성공!', result: rows[0].result });
+    const result = await db.query('SELECT 1 + 1 AS result');
+    res.json({ message: 'DB 연결 성공!', result: result.rows[0].result });
   } catch (error) {
     console.error('❌ DB 연결 실패:', error);
     res.status(500).json({ error: 'DB 연결 실패' });
