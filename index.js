@@ -24,6 +24,10 @@ app.get('/test-db', async (req, res) => {
 const authRoutes = require('./routes/auth');
 app.use('/api', authRoutes);
 
+// 리뷰 API 라우터 연결
+const reviewRoutes = require('./routes/review');
+app.use('/api', reviewRoutes);
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 서버 실행 중: http://localhost:${PORT}`);
