@@ -1,9 +1,10 @@
 // routes/auth.js
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcrypt');
+const argon2 = require('argon2'); // bcrypt → argon2로 변경
 const db = require('../db');
 
+// 회원가입
 router.post('/register', async (req, res) => {
   const { id, password, name, birth, gender, email, phone_number } = req.body;
 
@@ -26,7 +27,8 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    const hashedPw = await bcrypt.hash(password, 10);
+    // 비밀번호 해시 (argon2)
+    const hashedPw = await argon2.hash(password);
 
     await db.query(
       `INSERT INTO member (id, password, name, birth, gender, email, phone_number)
@@ -68,9 +70,9 @@ router.post('/login', async (req, res) => {
 
     const user = users[0];
 
-    // 2. 비밀번호 비교
+    // 2. 비밀번호 비교 (argon2)
     console.time("🔐 비밀번호 비교");
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await argon2.verify(user.password, password);
     console.timeEnd("🔐 비밀번호 비교");
 
     if (!isMatch) {
