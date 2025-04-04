@@ -25,7 +25,7 @@ const authRoutes = require('./routes/auth');
 app.use('/api', authRoutes);
 
 // 리뷰 API 라우터 연결
-const reviewRoutes = require('./routes/review');
+const reviewRoutes = require('./routes/review.js');
 app.use('/api', reviewRoutes);
 
 const PORT = process.env.PORT || 3000;
