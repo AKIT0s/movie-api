@@ -28,7 +28,13 @@ app.use('/api', authRoutes);
 const reviewRoutes = require('./routes/review.js');
 app.use('/api', reviewRoutes);
 
+// 영화 조회 API 라우터 연결
+const movieRoutes = require('./routes/movie');
+app.use('/api', movieRoutes);
+
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 서버 실행 중: http://localhost:${PORT}`);
 });
+
