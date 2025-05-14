@@ -1,3 +1,4 @@
+// routes/review.js
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
@@ -15,7 +16,6 @@ router.post('/reviews', async (req, res) => {
     highlight_image_url
   } = req.body;
 
-  // 필수 값 체크
   if (!member_id || !movie_id || !content || rating === undefined) {
     return res.status(400).json({ error: '필수 항목이 누락되었습니다.' });
   }
@@ -46,6 +46,23 @@ router.post('/reviews', async (req, res) => {
     });
   } catch (err) {
     console.error('❌ 리뷰 작성 오류:', err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+});
+
+// 특정 영화의 리뷰 조회
+router.get('/reviews/movie/:movie_id', async (req, res) => {
+  const { movie_id } = req.params;
+
+  try {
+    const result = await db.query(
+      'SELECT * FROM review WHERE movie_id = $1 ORDER BY created_at DESC',
+      [movie_id]
+    );
+
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error('❌ 리뷰 조회 오류:', err);
     res.status(500).json({ error: '서버 오류' });
   }
 });
