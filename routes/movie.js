@@ -1,4 +1,5 @@
 // routes/movie.js
+// routes/movie.js
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
@@ -58,30 +59,3 @@ router.post('/movies', async (req, res) => {
 });
 
 module.exports = router;
-
-// review.js 예시
-const express = require('express');
-const reviewRouter = express.Router();
-const { Review } = require('../models');
-
-// 리뷰 목록 조회
-reviewRouter.get('/', async (req, res) => {
-  try {
-    const reviews = await Review.findAll();
-    res.json(reviews);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 리뷰 등록
-reviewRouter.post('/', async (req, res) => {
-  try {
-    const review = await Review.create(req.body);
-    res.json({ message: '리뷰가 등록되었습니다.', review });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-module.exports = reviewRouter;
