@@ -10,7 +10,8 @@ router.post('/movies', async (req, res) => {
     genre,
     release_year,
     director,
-    poster_url
+    poster_url,
+    tmdb_id
   } = req.body;
 
   // 필수값 체크
@@ -19,11 +20,18 @@ router.post('/movies', async (req, res) => {
   }
 
   try {
-    // 1. 중복 확인 (제목 + 연도 조합으로 검사)
-    const existing = await db.query(
-      `SELECT * FROM movie WHERE title = $1 AND release_year = $2`,
-      [title, release_year]
-    );
+    // 1. 중복 확인 (tmdb_id 우선, 없으면 제목+연도로 검사)
+    let existing;
+    if (tmdb_id) {
+      existing = await db.query(`SELECT * FROM movie WHERE tmdb_id = $1`, [tmdb_id]);
+    }
+
+    if (!existing || existing.rows.length === 0) {
+      existing = await db.query(
+        `SELECT * FROM movie WHERE title = $1 AND release_year = $2`,
+        [title, release_year]
+      );
+    }
 
     if (existing.rows.length > 0) {
       return res.status(200).json({
@@ -32,11 +40,11 @@ router.post('/movies', async (req, res) => {
       });
     }
 
-    // 2. 새 영화 등록
+    // 2. 새 영화 등록 (tmdb_id 포함)
     const result = await db.query(
-      `INSERT INTO movie (title, genre, release_year, director, poster_url)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [title, genre || [], release_year, director || null, poster_url || null]
+      `INSERT INTO movie (title, genre, release_year, director, poster_url, tmdb_id)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [title, genre || [], release_year, director || null, poster_url || null, tmdb_id || null]
     );
 
     res.status(201).json({
@@ -50,3 +58,30 @@ router.post('/movies', async (req, res) => {
 });
 
 module.exports = router;
+
+// review.js 예시
+const express = require('express');
+const reviewRouter = express.Router();
+const { Review } = require('../models');
+
+// 리뷰 목록 조회
+reviewRouter.get('/', async (req, res) => {
+  try {
+    const reviews = await Review.findAll();
+    res.json(reviews);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 리뷰 등록
+reviewRouter.post('/', async (req, res) => {
+  try {
+    const review = await Review.create(req.body);
+    res.json({ message: '리뷰가 등록되었습니다.', review });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = reviewRouter;
