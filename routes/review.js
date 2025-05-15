@@ -20,12 +20,13 @@ router.post('/reviews', async (req, res) => {
     highlight_image_url
   } = req.body;
 
-  if (!member_id || !title || !content || rating === undefined) {
+  const parsedRating = parseFloat(rating);
+
+  if (!member_id?.trim() || !title?.trim() || !content?.trim() || isNaN(parsedRating)) {
     return res.status(400).json({ error: '필수 항목이 누락되었습니다.' });
   }
 
   try {
-    // 1️⃣ TMDB에서 title로 검색 → 첫 결과의 tmdb_id 추출
     const searchResponse = await axios.get(`https://api.themoviedb.org/3/search/movie`, {
       params: {
         api_key: TMDB_API_KEY,
@@ -40,13 +41,11 @@ router.post('/reviews', async (req, res) => {
 
     const tmdb_id = searchResponse.data.results[0].id;
 
-    // 2️⃣ movie DB에 tmdb_id로 영화 존재 확인
     let movieResult = await db.query(
       'SELECT id FROM movie WHERE tmdb_id = $1',
       [tmdb_id]
     );
 
-    // 3️⃣ 영화 없으면 TMDB 상세 정보 조회 + insert
     if (movieResult.rows.length === 0) {
       const movieResponse = await axios.get(`https://api.themoviedb.org/3/movie/${tmdb_id}`, {
         params: { api_key: TMDB_API_KEY, language: 'ko-KR' }
@@ -57,7 +56,7 @@ router.post('/reviews', async (req, res) => {
       const movieTitle = movieData.title;
       const genreNames = movieData.genres ? movieData.genres.map(g => g.name) : [];
       const release_year = movieData.release_date ? parseInt(movieData.release_date.substring(0, 4)) : null;
-      const director = null; // TMDB Movie API에서는 감독 정보 없음
+      const director = null;
       const poster_url = movieData.poster_path
         ? `https://image.tmdb.org/t/p/w500${movieData.poster_path}`
         : null;
@@ -73,7 +72,6 @@ router.post('/reviews', async (req, res) => {
 
     const movie_id = movieResult.rows[0].id;
 
-    // 4️⃣ 리뷰 저장
     const reviewResult = await db.query(
       `INSERT INTO review (
         member_id, movie_id, content, rating, emotions,
@@ -85,7 +83,7 @@ router.post('/reviews', async (req, res) => {
         member_id,
         movie_id,
         content,
-        rating,
+        parsedRating,
         emotions,
         media_url,
         highlight_quote,
@@ -100,6 +98,50 @@ router.post('/reviews', async (req, res) => {
 
   } catch (err) {
     console.error('❌ 리뷰 작성 오류 (title 기반 자동 등록 포함):', err.response?.data || err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+});
+
+// 별점 조회 API
+router.get('/reviews/tmdb/:tmdb_id/rating', async (req, res) => {
+  const { tmdb_id } = req.params;
+
+  try {
+    const movieResult = await db.query(
+      'SELECT id FROM movie WHERE tmdb_id = $1',
+      [tmdb_id]
+    );
+
+    if (movieResult.rows.length === 0) {
+      return res.status(404).json({ error: '해당 영화가 없습니다.' });
+    }
+
+    const movie_id = movieResult.rows[0].id;
+
+    const avgResult = await db.query(
+      'SELECT COUNT(*) AS total_reviews, ROUND(AVG(rating)::numeric, 1) AS average_rating FROM review WHERE movie_id = $1',
+      [movie_id]
+    );
+
+    const distResult = await db.query(
+      'SELECT FLOOR(rating) AS rating_group, COUNT(*) AS count FROM review WHERE movie_id = $1 GROUP BY rating_group',
+      [movie_id]
+    );
+
+    const distribution = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
+    distResult.rows.forEach(row => {
+      const key = Math.min(Math.max(parseInt(row.rating_group), 1), 5);
+      distribution[key] = parseInt(row.count);
+    });
+
+    res.json({
+      tmdb_id: parseInt(tmdb_id),
+      average_rating: parseFloat(avgResult.rows[0].average_rating) || 0,
+      total_reviews: parseInt(avgResult.rows[0].total_reviews),
+      rating_distribution: distribution
+    });
+  } catch (err) {
+    console.error('❌ 별점 조회 오류:', err);
     res.status(500).json({ error: '서버 오류' });
   }
 });
