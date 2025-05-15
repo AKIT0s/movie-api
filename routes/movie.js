@@ -1,5 +1,5 @@
 // routes/movie.js
-// routes/movie.js
+
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
@@ -20,11 +20,14 @@ router.post('/movies', async (req, res) => {
     return res.status(400).json({ error: '제목과 개봉 연도는 필수입니다.' });
   }
 
+  // string → integer 변환 (예방용)
+  const parsedTmdbId = tmdb_id ? parseInt(tmdb_id) : null;
+
   try {
     // 1. 중복 확인 (tmdb_id 우선, 없으면 제목+연도로 검사)
     let existing;
-    if (tmdb_id) {
-      existing = await db.query(`SELECT * FROM movie WHERE tmdb_id = $1`, [tmdb_id]);
+    if (parsedTmdbId) {
+      existing = await db.query(`SELECT * FROM movie WHERE tmdb_id = $1`, [parsedTmdbId]);
     }
 
     if (!existing || existing.rows.length === 0) {
@@ -45,7 +48,7 @@ router.post('/movies', async (req, res) => {
     const result = await db.query(
       `INSERT INTO movie (title, genre, release_year, director, poster_url, tmdb_id)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [title, genre || [], release_year, director || null, poster_url || null, tmdb_id || null]
+      [title, genre || [], release_year, director || null, poster_url || null, parsedTmdbId]
     );
 
     res.status(201).json({
