@@ -3,13 +3,16 @@ console.log('🔥 서버 시작 준비 중...');
 // index.js
 
 const express = require('express');
-require('dotenv').config();
+require('dotenv').config(); // 반드시 최상단
+
+// ✅ 추가: TMDB API KEY 확인 로그
+console.log("✅ TMDB API KEY:", process.env.TMDB_API_KEY || "⛔️ Not Set!");
+
 const app = express();
-const db = require('./db'); // DB 테스트용
+const db = require('./db');
 
 app.use(express.json());
 
-// 테스트 라우트 유지하고 싶으면 아래 포함!
 app.get('/test-db', async (req, res) => {
   try {
     const result = await db.query('SELECT 1 + 1 AS result');
@@ -20,21 +23,16 @@ app.get('/test-db', async (req, res) => {
   }
 });
 
-// 실제 API 라우터 연결
 const authRoutes = require('./routes/auth');
 app.use('/api', authRoutes);
 
-// 리뷰 API 라우터 연결
 const reviewRoutes = require('./routes/review.js');
 app.use('/api', reviewRoutes);
 
-// 영화 조회 API 라우터 연결
 const movieRoutes = require('./routes/movie');
 app.use('/api', movieRoutes);
-
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 서버 실행 중: http://localhost:${PORT}`);
 });
-
