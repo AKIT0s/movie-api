@@ -146,4 +146,38 @@ router.get('/reviews/tmdb/:tmdb_id/rating', async (req, res) => {
   }
 });
 
+// 리뷰 수정 API (PATCH)
+router.patch('/reviews/:id', async (req, res) => {
+  const { id } = req.params;
+  const { member_id, content, rating, emotions, media_url, highlight_quote, highlight_image_url } = req.body;
+
+  if (!member_id || !content || rating === undefined) {
+    return res.status(400).json({ error: '필수 항목이 누락되었습니다.' });
+  }
+
+  try {
+    // 리뷰 존재 여부 + 작성자 본인 확인
+    const existing = await db.query('SELECT * FROM review WHERE id = $1', [id]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: '리뷰를 찾을 수 없습니다.' });
+    }
+    if (existing.rows[0].member_id !== member_id) {
+      return res.status(403).json({ error: '리뷰를 수정할 권한이 없습니다.' });
+    }
+
+    const updated = await db.query(
+      `UPDATE review
+       SET content = $1, rating = $2, emotions = $3, media_url = $4,
+           highlight_quote = $5, highlight_image_url = $6, updated_at = NOW()
+       WHERE id = $7 RETURNING *`,
+      [content, rating, emotions, media_url, highlight_quote, highlight_image_url, id]
+    );
+
+    res.status(200).json({ message: '리뷰가 수정되었습니다.', review: updated.rows[0] });
+  } catch (err) {
+    console.error('❌ 리뷰 수정 오류:', err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+});
+
 module.exports = router;
