@@ -156,7 +156,6 @@ router.patch('/reviews/:id', async (req, res) => {
   }
 
   try {
-    // 리뷰 존재 여부 + 작성자 본인 확인
     const existing = await db.query('SELECT * FROM review WHERE id = $1', [id]);
     if (existing.rows.length === 0) {
       return res.status(404).json({ error: '리뷰를 찾을 수 없습니다.' });
@@ -180,4 +179,31 @@ router.patch('/reviews/:id', async (req, res) => {
   }
 });
 
+// 리뷰 삭제 API (DELETE)
+router.delete('/reviews/:id', async (req, res) => {
+  const { id } = req.params;
+  const { member_id } = req.body;
+
+  if (!member_id) {
+    return res.status(400).json({ error: '사용자 정보가 필요합니다.' });
+  }
+
+  try {
+    const existing = await db.query('SELECT * FROM review WHERE id = $1', [id]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: '리뷰를 찾을 수 없습니다.' });
+    }
+    if (existing.rows[0].member_id !== member_id) {
+      return res.status(403).json({ error: '리뷰를 삭제할 권한이 없습니다.' });
+    }
+
+    await db.query('DELETE FROM review WHERE id = $1', [id]);
+    res.status(200).json({ message: '리뷰가 삭제되었습니다.' });
+  } catch (err) {
+    console.error('❌ 리뷰 삭제 오류:', err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+});
+
 module.exports = router;
+
