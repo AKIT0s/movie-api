@@ -102,6 +102,34 @@ router.post('/reviews', async (req, res) => {
   }
 });
 
+// 특정 영화의 리뷰 조회 (tmdb_id 기준)
+router.get('/reviews/tmdb/:tmdb_id', async (req, res) => {
+  const { tmdb_id } = req.params;
+
+  try {
+    const movieResult = await db.query(
+      'SELECT id FROM movie WHERE tmdb_id = $1',
+      [tmdb_id]
+    );
+
+    if (movieResult.rows.length === 0) {
+      return res.status(404).json({ error: '해당 영화가 없습니다.' });
+    }
+
+    const movie_id = movieResult.rows[0].id;
+
+    const reviewResult = await db.query(
+      'SELECT * FROM review WHERE movie_id = $1 ORDER BY created_at DESC',
+      [movie_id]
+    );
+
+    res.status(200).json(reviewResult.rows);
+  } catch (err) {
+    console.error('❌ 리뷰 조회 오류:', err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+});
+
 // 별점 조회 API
 router.get('/reviews/tmdb/:tmdb_id/rating', async (req, res) => {
   const { tmdb_id } = req.params;
