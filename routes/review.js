@@ -4,7 +4,6 @@ const express = require('express');
 const axios = require('axios');
 const router = express.Router();
 const db = require('../db');
-const authenticateToken = require('../middleware/auth');
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 
@@ -108,21 +107,14 @@ router.get('/reviews/tmdb/:tmdb_id', async (req, res) => {
   const { tmdb_id } = req.params;
 
   try {
-    const movieResult = await db.query(
-      'SELECT id FROM movie WHERE tmdb_id = $1',
-      [tmdb_id]
-    );
+    const movieResult = await db.query('SELECT id FROM movie WHERE tmdb_id = $1', [tmdb_id]);
 
     if (movieResult.rows.length === 0) {
       return res.status(404).json({ error: '해당 영화가 없습니다.' });
     }
 
     const movie_id = movieResult.rows[0].id;
-
-    const reviewResult = await db.query(
-      'SELECT * FROM review WHERE movie_id = $1 ORDER BY created_at DESC',
-      [movie_id]
-    );
+    const reviewResult = await db.query('SELECT * FROM review WHERE movie_id = $1 ORDER BY created_at DESC', [movie_id]);
 
     res.status(200).json(reviewResult.rows);
   } catch (err) {
@@ -136,10 +128,7 @@ router.get('/reviews/tmdb/:tmdb_id/rating', async (req, res) => {
   const { tmdb_id } = req.params;
 
   try {
-    const movieResult = await db.query(
-      'SELECT id FROM movie WHERE tmdb_id = $1',
-      [tmdb_id]
-    );
+    const movieResult = await db.query('SELECT id FROM movie WHERE tmdb_id = $1', [tmdb_id]);
 
     if (movieResult.rows.length === 0) {
       return res.status(404).json({ error: '해당 영화가 없습니다.' });
@@ -175,7 +164,7 @@ router.get('/reviews/tmdb/:tmdb_id/rating', async (req, res) => {
   }
 });
 
-// 리뷰 수정 API (PATCH)
+// 리뷰 수정 API
 router.patch('/reviews/:id', async (req, res) => {
   const { id } = req.params;
   const { member_id, content, rating, emotions, media_url, highlight_quote, highlight_image_url } = req.body;
@@ -208,25 +197,25 @@ router.patch('/reviews/:id', async (req, res) => {
   }
 });
 
-// 🔐 리뷰 삭제 API - JWT 기반 인증 필요
-router.delete('/reviews/:id', authenticateToken, async (req, res) => {
-  const reviewId = req.params.id;
-  const memberId = req.user.member_id; // JWT에서 추출된 사용자 ID
+// 리뷰 삭제 API (JWT 없이 member_id로만 검증)
+router.delete('/reviews/:id', async (req, res) => {
+  const { id } = req.params;
+  const { member_id } = req.body;
+
+  if (!member_id) {
+    return res.status(400).json({ error: '사용자 정보가 필요합니다.' });
+  }
 
   try {
-    // 1. 해당 리뷰가 존재하고, 현재 사용자 것이 맞는지 확인
-    const result = await db.query(
-      'SELECT * FROM review WHERE id = $1 AND member_id = $2',
-      [reviewId, memberId]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: '해당 리뷰가 없거나 삭제 권한이 없습니다.' });
+    const existing = await db.query('SELECT * FROM review WHERE id = $1', [id]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: '리뷰를 찾을 수 없습니다.' });
+    }
+    if (existing.rows[0].member_id !== member_id) {
+      return res.status(403).json({ error: '리뷰를 삭제할 권한이 없습니다.' });
     }
 
-    // 2. 삭제 진행
-    await db.query('DELETE FROM review WHERE id = $1', [reviewId]);
-
+    await db.query('DELETE FROM review WHERE id = $1', [id]);
     res.status(200).json({ message: '리뷰가 삭제되었습니다.' });
   } catch (err) {
     console.error('❌ 리뷰 삭제 오류:', err);
