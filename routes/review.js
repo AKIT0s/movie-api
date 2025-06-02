@@ -107,14 +107,21 @@ router.get('/reviews/tmdb/:tmdb_id', async (req, res) => {
   const { tmdb_id } = req.params;
 
   try {
-    const movieResult = await db.query('SELECT id FROM movie WHERE tmdb_id = $1', [tmdb_id]);
+    const movieResult = await db.query(
+      'SELECT id FROM movie WHERE tmdb_id = $1',
+      [tmdb_id]
+    );
 
     if (movieResult.rows.length === 0) {
       return res.status(404).json({ error: '해당 영화가 없습니다.' });
     }
 
     const movie_id = movieResult.rows[0].id;
-    const reviewResult = await db.query('SELECT * FROM review WHERE movie_id = $1 ORDER BY created_at DESC', [movie_id]);
+
+    const reviewResult = await db.query(
+      'SELECT * FROM review WHERE movie_id = $1 ORDER BY created_at DESC',
+      [movie_id]
+    );
 
     res.status(200).json(reviewResult.rows);
   } catch (err) {
@@ -128,7 +135,10 @@ router.get('/reviews/tmdb/:tmdb_id/rating', async (req, res) => {
   const { tmdb_id } = req.params;
 
   try {
-    const movieResult = await db.query('SELECT id FROM movie WHERE tmdb_id = $1', [tmdb_id]);
+    const movieResult = await db.query(
+      'SELECT id FROM movie WHERE tmdb_id = $1',
+      [tmdb_id]
+    );
 
     if (movieResult.rows.length === 0) {
       return res.status(404).json({ error: '해당 영화가 없습니다.' });
@@ -164,7 +174,7 @@ router.get('/reviews/tmdb/:tmdb_id/rating', async (req, res) => {
   }
 });
 
-// 리뷰 수정 API
+// 리뷰 수정 API (PATCH)
 router.patch('/reviews/:id', async (req, res) => {
   const { id } = req.params;
   const { member_id, content, rating, emotions, media_url, highlight_quote, highlight_image_url } = req.body;
@@ -197,7 +207,7 @@ router.patch('/reviews/:id', async (req, res) => {
   }
 });
 
-// 리뷰 삭제 API (JWT 없이 member_id로만 검증)
+// 리뷰 삭제 API (DELETE, jwt 없이 member_id로 확인)
 router.delete('/reviews/:id', async (req, res) => {
   const { id } = req.params;
   const { member_id } = req.body;
@@ -208,11 +218,8 @@ router.delete('/reviews/:id', async (req, res) => {
 
   try {
     const existing = await db.query('SELECT * FROM review WHERE id = $1', [id]);
-    if (existing.rows.length === 0) {
-      return res.status(404).json({ error: '리뷰를 찾을 수 없습니다.' });
-    }
-    if (existing.rows[0].member_id !== member_id) {
-      return res.status(403).json({ error: '리뷰를 삭제할 권한이 없습니다.' });
+    if (existing.rows.length === 0 || existing.rows[0].member_id !== member_id) {
+      return res.status(403).json({ error: '해당 리뷰가 없거나 삭제 권한이 없습니다.' });
     }
 
     await db.query('DELETE FROM review WHERE id = $1', [id]);
@@ -223,5 +230,23 @@ router.delete('/reviews/:id', async (req, res) => {
   }
 });
 
+// 특정 사용자의 리뷰 조회
+router.get('/reviews/member/:member_id', async (req, res) => {
+  const { member_id } = req.params;
+
+  try {
+    const result = await db.query(
+      'SELECT * FROM review WHERE member_id = $1 ORDER BY created_at DESC',
+      [member_id]
+    );
+
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error('❌ 나의 리뷰 조회 오류:', err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+});
+
 module.exports = router;
+
 
