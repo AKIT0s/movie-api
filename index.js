@@ -11,6 +11,10 @@ console.log("✅ TMDB API KEY:", process.env.TMDB_API_KEY || "⛔️ Not Set!");
 const app = express();
 const db = require('./db');
 
+const likeRoutes = require('./routes/like');
+app.use('/api', likeRoutes);
+
+
 app.use(express.json());
 
 app.get('/test-db', async (req, res) => {
